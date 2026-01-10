@@ -19,6 +19,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.FileProvider;
 
@@ -79,7 +80,11 @@ public class SettingsActivity extends BaseActivity {
         btnNightModeContainer.setOnClickListener(v -> switchNightMode.toggle());
         switchNightMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
             appPrefs.edit().putBoolean("night_mode", isChecked).apply();
-            recreate();
+            if (isChecked) {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+            } else {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+            }
         });
 
         LinearLayout btnQuoteContainer = findViewById(R.id.btnQuote);
@@ -138,8 +143,7 @@ public class SettingsActivity extends BaseActivity {
 
     private void checkUpdate() {
         Toast.makeText(this, "正在检查更新...", Toast.LENGTH_SHORT).show();
-        // TODO: 记得替换成你自己的 version.json 文件的真实链接
-        String url = "https://github.com/2932238802/Pococ/releases/download/v2.0.1/app-release.apk";
+        String url = "https://raw.githubusercontent.com/2932238802/Pococ/refs/heads/main/version.json";
 
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url(url).build();
