@@ -20,11 +20,11 @@ public class MusicService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        mediaPlayer = MediaPlayer.create(this, R.raw.background_music);
+        mediaPlayer = MediaPlayer.create(this, R.raw.background_music_2);   // 上一个有版权
 
         if (mediaPlayer != null) {
-            mediaPlayer.setLooping(true);                          // 播放
-            mediaPlayer.setVolume(0.5f, 0.5f); // 设置音量 (0.0 - 1.0)
+            mediaPlayer.setLooping(true);                                          // 播放
+            mediaPlayer.setVolume(0.5f, 0.5f);                 // 设置音量 (0.0 - 1.0)
         }
     }
 

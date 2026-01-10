@@ -3,13 +3,12 @@ package com.example.pococ;
 public class Task {
     private int id;
     private String title;
-
     private boolean isCompleted;
     private String dateTime;
+    private int taskType;
 
-    private  int taskType;          // 0 1 2 3 日 月 季 年
-
-    public Task(int id, String title, boolean isCompleted, String dateTime,int taskType) {
+    private long orderIndex;
+    public Task(int id, String title, boolean isCompleted, String dateTime, int taskType) {
         this.id = id;
         this.title = title;
         this.isCompleted = isCompleted;
@@ -21,7 +20,6 @@ public class Task {
         this.title = title;
         this.isCompleted = isCompleted;
         this.dateTime = dateTime;
-        this.taskType = 0;
     }
 
     public int getId() { return id; }
@@ -38,4 +36,8 @@ public class Task {
 
     public int getTaskType() { return taskType; }
     public void setTaskType(int taskType) { this.taskType = taskType; }
+
+    // === 新增 Getter/Setter ===
+    public long getOrderIndex() { return orderIndex; }
+    public void setOrderIndex(long orderIndex) { this.orderIndex = orderIndex; }
 }

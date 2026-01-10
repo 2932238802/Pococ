@@ -15,8 +15,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -34,9 +34,8 @@ public class TaskFragment extends Fragment {
     private RecyclerView recyclerView;
     private TaskAdapter adapter;
     private DatabaseHelper dbHelper;
-    private List<Task> taskList = new ArrayList<>();
+    private List<Object> displayList = new ArrayList<>();
 
-    // 工厂方法创建 Fragment
     public static TaskFragment newInstance(int type) {
         TaskFragment fragment = new TaskFragment();
         Bundle args = new Bundle();
@@ -57,13 +56,12 @@ public class TaskFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        // 注意：这里复用了之前的 fragment 布局，假设你的 fragment_task_list.xml 里只有一个 RecyclerView，ID为 recyclerViewFragment
         View view = inflater.inflate(R.layout.fragment_task_list, container, false);
 
-        recyclerView = view.findViewById(R.id.recyclerViewFragment);
+        recyclerView = view.findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        adapter = new TaskAdapter(taskList, new TaskAdapter.OnTaskActionListener() {
+        adapter = new TaskAdapter(displayList, new TaskAdapter.OnTaskActionListener() {
             @Override
             public void onTaskDelete(Task task) {
                 showDeleteConfirmDialog(task);
@@ -82,7 +80,85 @@ public class TaskFragment extends Fragment {
         });
         recyclerView.setAdapter(adapter);
 
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new ItemTouchHelper.Callback() {
+            @Override
+            public int getMovementFlags(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                if (viewHolder.getItemViewType() == 1) {
+                    return makeMovementFlags(0, 0);
+                }
+                int dragFlags = ItemTouchHelper.UP | ItemTouchHelper.DOWN;
+                return makeMovementFlags(dragFlags, 0);
+            }
+
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                int fromPos = viewHolder.getAdapterPosition();
+                int toPos = target.getAdapterPosition();
+
+                if (viewHolder.getItemViewType() != 0 || target.getItemViewType() != 0) {
+                    return false;
+                }
+
+                if (taskType == 2) {
+                    int headerPosFrom = findHeaderPosition(fromPos);
+                    int headerPosTo = findHeaderPosition(toPos);
+                    if (headerPosFrom != headerPosTo || headerPosFrom == -1) {
+                        return false;
+                    }
+                }
+
+                adapter.onItemMove(fromPos, toPos);
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+            }
+
+            @Override
+            public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                super.clearView(recyclerView, viewHolder);
+                saveNewOrderToDB();
+            }
+        });
+        itemTouchHelper.attachToRecyclerView(recyclerView);
+
         return view;
+    }
+
+    private int findHeaderPosition(int currentPos) {
+        List<Object> list = adapter.getDisplayList();
+        for (int i = currentPos; i >= 0; i--) {
+            if (list.get(i) instanceof String) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void saveNewOrderToDB() {
+        List<Task> tasksToUpdate = new ArrayList<>();
+        for (Object obj : adapter.getDisplayList()) {
+            if (obj instanceof Task) {
+                tasksToUpdate.add((Task) obj);
+            }
+        }
+        for (int i = 0; i < tasksToUpdate.size(); i++) {
+            Task t = tasksToUpdate.get(i);
+            dbHelper.updateTaskOrder(t.getId(), i);
+        }
+    }
+
+    private void pickDateOnly(TextView displayView, StringBuilder outputString) {
+        if (getContext() == null) return;
+        Calendar c = Calendar.getInstance();
+        new DatePickerDialog(getContext(), (view, year, month, dayOfMonth) -> {
+            String result = String.format(Locale.getDefault(), "%d-%02d-%02d", year, (month + 1), dayOfMonth);
+            displayView.setText(result);
+            // 移除硬编码颜色设置
+            outputString.setLength(0);
+            outputString.append(result);
+        }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
     }
 
     @Override
@@ -96,25 +172,71 @@ public class TaskFragment extends Fragment {
 
         SharedPreferences prefs = getContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
         String currentUser = prefs.getString("current_user", "Guest");
-        taskList = dbHelper.getTasksByTypeAndUser(taskType, currentUser);
-        Collections.sort(taskList, (t1, t2) -> {
-            boolean b1 = t1.isCompleted();
-            boolean b2 = t2.isCompleted();
-            if (b1 != b2) return b1 ? 1 : -1;
-            String d1 = t1.getDateTime() == null ? "" : t1.getDateTime();
-            String d2 = t2.getDateTime() == null ? "" : t2.getDateTime();
-            return d1.compareTo(d2);
-        });
+        List<Task> rawTasks = dbHelper.getTasksByTypeAndUser(taskType, currentUser);
+        displayList.clear();
+
+        if (taskType == 2) {
+            List<Task> spring = new ArrayList<>();
+            List<Task> summer = new ArrayList<>();
+            List<Task> autumn = new ArrayList<>();
+            List<Task> winter = new ArrayList<>();
+            List<Task> others = new ArrayList<>();
+
+            for (Task t : rawTasks) {
+                String title = t.getTitle();
+                if (title.startsWith("[春季]")) spring.add(t);
+                else if (title.startsWith("[夏季]")) summer.add(t);
+                else if (title.startsWith("[秋季]")) autumn.add(t);
+                else if (title.startsWith("[冬季]")) winter.add(t);
+                else others.add(t);
+            }
+
+            if (!spring.isEmpty()) {
+                displayList.add("SPRING (Mar - May)");
+                displayList.addAll(spring);
+            }
+            if (!summer.isEmpty()) {
+                displayList.add("SUMMER (Jun - Aug)");
+                displayList.addAll(summer);
+            }
+            if (!autumn.isEmpty()) {
+                displayList.add("AUTUMN (Sep - Nov)");
+                displayList.addAll(autumn);
+            }
+            if (!winter.isEmpty()) {
+                displayList.add("WINTER (Dec - Feb)");
+                displayList.addAll(winter);
+            }
+            if (!others.isEmpty()) {
+                displayList.add("OTHERS");
+                displayList.addAll(others);
+            }
+        } else {
+            if (taskType == 0) {
+                Collections.sort(rawTasks, (t1, t2) -> {
+                    boolean b1 = t1.isCompleted();
+                    boolean b2 = t2.isCompleted();
+                    if (b1 != b2) return b1 ? 1 : -1;
+                    String d1 = t1.getDateTime() == null ? "" : t1.getDateTime();
+                    String d2 = t2.getDateTime() == null ? "" : t2.getDateTime();
+                    return d1.compareTo(d2);
+                });
+            }
+            displayList.addAll(rawTasks);
+        }
 
         if (adapter != null) {
-            adapter.updateList(taskList);
+            adapter.updateList(displayList);
         }
     }
 
     private void showEditTaskDialog(Task task) {
         if (getContext() == null) return;
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("修改计划");
+
+        String[] typeNames = {"日计划", "月计划", "季计划", "年计划"};
+        String prefix = (taskType >= 0 && taskType < typeNames.length) ? typeNames[taskType] : "计划";
+        builder.setTitle("修改 " + prefix);
 
         LinearLayout layout = new LinearLayout(getContext());
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -125,23 +247,28 @@ public class TaskFragment extends Fragment {
         etTitle.setSelection(task.getTitle().length());
         layout.addView(etTitle);
 
-        final TextView tvTimePick = new TextView(getContext());
-        String currentDisplayTime = (task.getDateTime() != null && !task.getDateTime().isEmpty())
-                ? task.getDateTime()
-                : "重设 ddl 🕑";
-        tvTimePick.setText(currentDisplayTime);
-        tvTimePick.setPadding(0, 30, 0, 20);
-        int colorId = (task.getDateTime() != null && !task.getDateTime().isEmpty())
-                ? android.R.color.black
-                : android.R.color.darker_gray;
-        tvTimePick.setTextColor(ContextCompat.getColor(getContext(), colorId));
-
-        layout.addView(tvTimePick);
-
         final StringBuilder finalDateTime = new StringBuilder();
-        if(task.getDateTime() != null) finalDateTime.append(task.getDateTime());
+        if (task.getDateTime() != null) finalDateTime.append(task.getDateTime());
 
-        tvTimePick.setOnClickListener(v -> pickDateTime(tvTimePick, finalDateTime));
+        if (taskType == 0 || taskType == 1) {
+            final TextView tvTimePick = new TextView(getContext());
+            String currentDisplayTime = (task.getDateTime() != null && !task.getDateTime().isEmpty())
+                    ? task.getDateTime()
+                    : (taskType == 0 ? "重设 ddl 🕑" : "重设日期 📅");
+            tvTimePick.setText(currentDisplayTime);
+            tvTimePick.setPadding(0, 30, 0, 20);
+
+            // 移除手动颜色设置，让它默认显示（夜间白色，日间黑色）
+            layout.addView(tvTimePick);
+
+            tvTimePick.setOnClickListener(v -> {
+                if (taskType == 0) {
+                    pickDateTime(tvTimePick, finalDateTime);
+                } else {
+                    pickDateOnly(tvTimePick, finalDateTime);
+                }
+            });
+        }
 
         builder.setView(layout);
 
@@ -149,7 +276,11 @@ public class TaskFragment extends Fragment {
             String newTitle = etTitle.getText().toString().trim();
             if (!newTitle.isEmpty()) {
                 task.setTitle(newTitle);
-                task.setDateTime(finalDateTime.toString());
+                if (taskType == 0 || taskType == 1) {
+                    task.setDateTime(finalDateTime.toString());
+                } else {
+                    task.setDateTime("");
+                }
                 dbHelper.updateTask(task);
                 loadTasks();
             }
@@ -163,7 +294,7 @@ public class TaskFragment extends Fragment {
         if (getContext() == null) return;
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext())
                 .setTitle("算了 删了你吧")
-                .setMessage("真的删了么,那这些日子'我在你身边'又算什么呢?")
+                .setMessage("准备好迎接新的开始了吗？")
                 .setPositiveButton("DELETE", (dialog, which) -> {
                     dbHelper.deleteTask(task.getId());
                     loadTasks();
@@ -183,8 +314,7 @@ public class TaskFragment extends Fragment {
                 String result = dateStr + " " + timeStr;
 
                 displayView.setText(result);
-                displayView.setTextColor(ContextCompat.getColor(getContext(), android.R.color.black));
-
+                // 移除硬编码颜色设置
                 outputString.setLength(0);
                 outputString.append(result);
             }, c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), true).show();
@@ -195,7 +325,6 @@ public class TaskFragment extends Fragment {
         if (getContext() == null) return;
         AlertDialog dialog = builder.create();
         dialog.show();
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(getContext(), android.R.color.black));
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(getContext(), android.R.color.darker_gray));
+        // 移除强制设置按钮颜色的代码，让主题自动处理
     }
 }

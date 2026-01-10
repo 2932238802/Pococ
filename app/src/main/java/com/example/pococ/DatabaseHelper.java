@@ -12,9 +12,8 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "LosAngelous.db";
-    private static final int DATABASE_VERSION = 5;
+    private static final int DATABASE_VERSION = 6;
 
-    // 用户表
     private static final String TABLE_USERS = "users";
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_USERNAME = "username";
@@ -28,6 +27,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_TASK_DUE_DATE = "due_date";
     private static final String COL_TASK_TYPE = "task_type";
     private static final String COL_TASK_USER = "user_name";
+    private static final String COL_TASK_ORDER = "order_index"; // <--- 新增
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -47,7 +47,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 COL_TASK_IS_DONE + " INTEGER, " +
                 COL_TASK_DUE_DATE + " TEXT, " +
                 COL_TASK_TYPE + " INTEGER DEFAULT 0, " +
-                COL_TASK_USER + " TEXT)";
+                COL_TASK_USER + " TEXT, " +
+                COL_TASK_ORDER + " INTEGER DEFAULT 0)"; // <--- 修改：增加这一行
         db.execSQL(createTaskTable);
     }
 
@@ -90,8 +91,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COL_TASK_IS_DONE, task.isCompleted() ? 1 : 0);
         values.put(COL_TASK_DUE_DATE, task.getDateTime());
         values.put(COL_TASK_TYPE, task.getTaskType());
-        // 关键：存入当前用户名
         values.put(COL_TASK_USER, username);
+
+        values.put(COL_TASK_ORDER, System.currentTimeMillis());
+
         db.insert(TABLE_TASKS, null, values);
     }
 
@@ -101,7 +104,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         String query = "SELECT * FROM " + TABLE_TASKS +
                 " WHERE " + COL_TASK_TYPE + " = ? AND " + COL_TASK_USER + " = ?" +
-                " ORDER BY " + COL_TASK_ID + " DESC";
+                " ORDER BY " + COL_TASK_ORDER + " ASC"; // <--- 修改：按自定义顺序排序
 
         Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(type), username});
 
@@ -112,6 +115,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 int isDoneIndex = cursor.getColumnIndex(COL_TASK_IS_DONE);
                 int dateIndex = cursor.getColumnIndex(COL_TASK_DUE_DATE);
                 int typeIndex = cursor.getColumnIndex(COL_TASK_TYPE);
+                int orderIndex = cursor.getColumnIndex(COL_TASK_ORDER); // <--- 新增
 
                 if (idIndex != -1 && titleIndex != -1) {
                     int id = cursor.getInt(idIndex);
@@ -119,13 +123,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     int isDoneInt = cursor.getInt(isDoneIndex);
                     String dueDate = cursor.getString(dateIndex);
                     int taskType = (typeIndex != -1) ? cursor.getInt(typeIndex) : 0;
+                    long order = (orderIndex != -1) ? cursor.getLong(orderIndex) : 0; // <--- 新增
 
-                    taskList.add(new Task(id, title, isDoneInt == 1, dueDate, taskType));
+                    Task t = new Task(id, title, isDoneInt == 1, dueDate, taskType);
+                    taskList.add(t);
                 }
             } while (cursor.moveToNext());
         }
         cursor.close();
         return taskList;
+    }
+
+    public void updateTaskOrder(int taskId, long newOrder) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_TASK_ORDER, newOrder);
+        db.update(TABLE_TASKS, values, COL_TASK_ID + " = ?", new String[]{String.valueOf(taskId)});
     }
 
     public List<Task> getAllTasks() {

@@ -7,7 +7,6 @@
     android:orientation="vertical"
     android:paddingTop="24dp">
 
-    <!-- 顶部标题栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -50,17 +49,69 @@
             android:orientation="vertical"
             android:paddingBottom="32dp">
 
-            <!-- 分组标题：General -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="#FFFFFF"
+                android:layout_marginBottom="24dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="20dp">
+
+                    <FrameLayout
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:background="@drawable/bg_icon_circle_blue">
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="12dp"
+                            android:src="@android:drawable/sym_def_app_icon"
+                            app:tint="#2196F3"/>
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+
+                        <TextView
+                            android:id="@+id/tvUserName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Hi, User"
+                            android:textColor="#333333"
+                            android:textSize="20sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="今天也要保持好心情 ~"
+                            android:textColor="#888888"
+                            android:textSize="12sp"
+                            android:layout_marginTop="4dp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="常规设置"
+                android:text="偏好设置"
                 android:textColor="#888888"
                 android:textSize="13sp"
                 android:layout_marginStart="8dp"
                 android:layout_marginBottom="8dp"/>
 
-            <!-- 卡片容器 1 -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -75,7 +126,6 @@
                     android:orientation="vertical"
                     android:paddingHorizontal="16dp">
 
-                    <!-- 背景音乐 -->
                     <LinearLayout
                         android:id="@+id/btnMusic"
                         android:layout_width="match_parent"
@@ -85,7 +135,6 @@
                         android:background="?attr/selectableItemBackground"
                         android:orientation="horizontal">
 
-                        <!-- 图标容器，更精致 -->
                         <FrameLayout
                             android:layout_width="36dp"
                             android:layout_height="36dp"
@@ -118,7 +167,88 @@
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#F5F5F5" android:layout_marginStart="52dp"/>
 
-                    <!-- 提前提醒 -->
+                    <LinearLayout
+                        android:id="@+id/btnNightMode"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingVertical="18dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:orientation="horizontal">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_icon_circle_dark"
+                            android:padding="6dp">
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@android:drawable/ic_menu_slideshow"
+                                app:tint="#455A64"/>
+                        </FrameLayout>
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="16dp"
+                            android:text="夜间模式"
+                            android:textColor="#333333"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchNightMode"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:theme="@style/Theme.AppCompat.Light"/>
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#F5F5F5" android:layout_marginStart="52dp"/>
+
+                    <LinearLayout
+                        android:id="@+id/btnQuote"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingVertical="18dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:orientation="horizontal">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_icon_circle_green"
+                            android:padding="6dp">
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@android:drawable/ic_menu_day"
+                                app:tint="#4CAF50"/>
+                        </FrameLayout>
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="16dp"
+                            android:text="每日一句"
+                            android:textColor="#333333"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchQuote"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:theme="@style/Theme.AppCompat.Light"/>
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#F5F5F5" android:layout_marginStart="52dp"/>
+
+
                     <LinearLayout
                         android:id="@+id/btnReminderOffset"
                         android:layout_width="match_parent"
@@ -166,6 +296,97 @@
                             android:rotation="-90"
                             app:tint="#CCCCCC"/>
                     </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#F5F5F5" android:layout_marginStart="52dp"/>
+
+                    <LinearLayout
+                        android:id="@+id/btnClearCache"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingVertical="18dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:orientation="horizontal">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_icon_circle_purple"
+                            android:padding="6dp">
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@android:drawable/ic_menu_delete"
+                                app:tint="#9C27B0"/>
+                        </FrameLayout>
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="16dp"
+                            android:text="清理缓存"
+                            android:textColor="#333333"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <ImageView
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:src="@android:drawable/arrow_down_float"
+                            android:rotation="-90"
+                            app:tint="#CCCCCC"/>
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#F5F5F5" android:layout_marginStart="52dp"/>
+
+                    <LinearLayout
+                        android:id="@+id/btnFontSize"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingVertical="18dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:orientation="horizontal">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_icon_circle_red"> <!-- Using a new color, e.g., red -->
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@android:drawable/ic_menu_sort_by_size"
+                                app:tint="#D32F2F"/>
+                        </FrameLayout>
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="16dp"
+                            android:text="字体大小"
+                            android:textColor="#333333"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <TextView
+                            android:id="@+id/tvFontSizeValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="标准"
+                            android:textColor="#888888"
+                            android:textSize="14sp"
+                            android:layout_marginEnd="8dp"/>
+
+                        <ImageView
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:src="@android:drawable/arrow_down_float"
+                            android:rotation="-90"
+                            app:tint="#CCCCCC"/>
+                    </LinearLayout>
+
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -192,7 +413,6 @@
                     android:orientation="vertical"
                     android:paddingHorizontal="16dp">
 
-                    <!-- 功能建议 -->
                     <LinearLayout
                         android:id="@+id/adviceBtn"
                         android:layout_width="match_parent"
@@ -261,6 +481,48 @@
                             android:layout_weight="1"
                             android:layout_marginStart="16dp"
                             android:text="GitHub 源码"
+                            android:textColor="#333333"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <ImageView
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:src="@android:drawable/arrow_down_float"
+                            android:rotation="-90"
+                            app:tint="#CCCCCC"/>
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#F5F5F5" android:layout_marginStart="52dp"/>
+
+
+                    <LinearLayout
+                        android:id="@+id/btnCheckUpdate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:paddingVertical="18dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:orientation="horizontal">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_icon_circle_blue"
+                            android:padding="6dp">
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@android:drawable/ic_menu_upload"
+                                app:tint="#2196F3"/>
+                        </FrameLayout>
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="16dp"
+                            android:text="检查更新"
                             android:textColor="#333333"
                             android:textSize="16sp"
                             android:fontFamily="sans-serif-medium"/>
