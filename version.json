@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "2.0.2",
-  "updateLog": "1.修复bug/n2.设置界面未响应偏好设置/n3.字体调整",
-  "apkUrl": "https://github.com/2932238802/Pococ/releases/download/2_0/PocoList_v_2_0_2.apk"
+  "versionCode": 4,
+  "versionName": "2.0.3",
+  "updateLog": "1.修复部分字体显示\n2.修复删除时候的问题\n3.缓存逻辑完善",
+  "apkUrl": "https://github.com/2932238802/Pococ/releases/download/2_0/PocoList_v_2_0_3.apk"
 }

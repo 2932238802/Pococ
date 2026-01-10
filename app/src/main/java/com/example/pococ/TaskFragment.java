@@ -293,7 +293,7 @@ public class TaskFragment extends Fragment {
     private void showDeleteConfirmDialog(Task task) {
         if (getContext() == null) return;
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext())
-                .setTitle("算了 删了你吧")
+                .setTitle("DELETE")
                 .setMessage("准备好迎接新的开始了吗？")
                 .setPositiveButton("DELETE", (dialog, which) -> {
                     dbHelper.deleteTask(task.getId());

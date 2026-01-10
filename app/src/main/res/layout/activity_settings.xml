@@ -95,7 +95,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="今天也要保持好心情 ~"
+                            android:text="今天也要保持好心情 ~ "
                             android:textColor="?android:attr/textColorSecondary"
                             android:textSize="12sp"
                             android:layout_marginTop="4dp"/>
@@ -552,7 +552,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="16dp"
-                            android:text="关于 Poco List"
+                            android:text="关于 LosTodo"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="16sp"
                             android:fontFamily="sans-serif-medium"/>
@@ -600,7 +600,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:text="Version 1.0.0"
+        android:text="Version 2.0.3"
         android:textColor="?android:attr/textColorSecondary"
         android:textSize="12sp"
         android:paddingBottom="16dp"/>

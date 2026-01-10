@@ -63,6 +63,10 @@ public class SettingsActivity extends BaseActivity {
         switchMusic = findViewById(R.id.switchMusic);
         boolean isMusicEnabled = appPrefs.getBoolean("music_enabled", true);
         switchMusic.setChecked(isMusicEnabled);
+        if (isMusicEnabled) {
+            startMusicService();
+        }
+
         btnMusicContainer.setOnClickListener(v -> switchMusic.toggle());
         switchMusic.setOnCheckedChangeListener((buttonView, isChecked) -> {
             appPrefs.edit().putBoolean("music_enabled", isChecked).apply();
