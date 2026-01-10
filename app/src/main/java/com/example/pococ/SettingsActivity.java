@@ -1,5 +1,6 @@
 package com.example.pococ;
 
+import android.annotation.SuppressLint;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -7,11 +8,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.util.Log;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -28,7 +31,6 @@ import com.google.gson.Gson;
 import java.io.File;
 import java.io.IOException;
 
-// === 修正 import ===
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -37,15 +39,36 @@ import okhttp3.Response;
 
 public class SettingsActivity extends BaseActivity {
 
+    private static final String TAG = "UpdateDebug"; // 专门用于调试更新功能的 TAG
+    private static final int REQUEST_INSTALL_PERMISSION = 1001;
+
     private SwitchCompat switchMusic;
     private SwitchCompat switchNightMode;
     private SwitchCompat switchQuote;
+
+    private BroadcastReceiver downloadReceiver;
+    private String pendingApkUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
         initViews();
+        Log.d(TAG, "onCreate: SettingsActivity 启动");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (downloadReceiver != null) {
+            try {
+                unregisterReceiver(downloadReceiver);
+                Log.d(TAG, "onDestroy: 广播接收器已注销");
+            } catch (Exception e) {
+                Log.e(TAG, "onDestroy: 注销广播接收器失败", e);
+            }
+            downloadReceiver = null;
+        }
     }
 
     private void initViews() {
@@ -147,30 +170,47 @@ public class SettingsActivity extends BaseActivity {
 
     private void checkUpdate() {
         Toast.makeText(this, "正在检查更新...", Toast.LENGTH_SHORT).show();
-        String url = " https://gitee.com/lsjwillwin/Pococ/raw/main/version.json";
-//        https://gitee.com/lsjwillwin/Pococ/raw/main/version.json
+        Log.d(TAG, "checkUpdate: 开始检查更新");
+
+        String url = "https://gitee.com/lsjwillwin/Pococ/raw/main/version.json";
+
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url(url).build();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> Toast.makeText(SettingsActivity.this, "检查更新失败，请稍后再试", Toast.LENGTH_SHORT).show());
+                Log.e(TAG, "checkUpdate: 网络请求失败", e);
+                runOnUiThread(() ->
+                        Toast.makeText(SettingsActivity.this, "检查更新失败，请稍后再试", Toast.LENGTH_SHORT).show()
+                );
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful() && response.body() != null) {
                     String json = response.body().string();
-                    VersionInfo versionInfo = new Gson().fromJson(json, VersionInfo.class);
-                    int currentVersionCode = getCurrentVersionCode();
+                    Log.d(TAG, "checkUpdate: 获取到版本信息: " + json);
+                    try {
+                        VersionInfo versionInfo = new Gson().fromJson(json, VersionInfo.class);
+                        int currentVersionCode = getCurrentVersionCode();
+                        Log.d(TAG, "当前版本: " + currentVersionCode + ", 远程版本: " + versionInfo.getVersionCode());
 
-                    if (versionInfo != null && versionInfo.getVersionCode() > currentVersionCode) {
-                        runOnUiThread(() -> showUpdateDialog(versionInfo));
-                    } else {
-                        runOnUiThread(() -> Toast.makeText(SettingsActivity.this, "已是最新版本", Toast.LENGTH_SHORT).show());
+                        if (versionInfo != null && versionInfo.getVersionCode() > currentVersionCode) {
+                            runOnUiThread(() -> showUpdateDialog(versionInfo));
+                        } else {
+                            runOnUiThread(() ->
+                                    Toast.makeText(SettingsActivity.this, "已是最新版本", Toast.LENGTH_SHORT).show()
+                            );
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "checkUpdate: JSON 解析失败", e);
+                        runOnUiThread(() ->
+                                Toast.makeText(SettingsActivity.this, "解析版本信息失败", Toast.LENGTH_SHORT).show()
+                        );
                     }
                 } else {
+                    Log.e(TAG, "checkUpdate: 服务器响应错误, code=" + response.code());
                     onFailure(call, new IOException("Response not successful"));
                 }
             }
@@ -188,102 +228,195 @@ public class SettingsActivity extends BaseActivity {
     }
 
     private void showUpdateDialog(VersionInfo versionInfo) {
+        Log.d(TAG, "showUpdateDialog: 显示更新弹窗");
         new AlertDialog.Builder(this)
                 .setTitle("发现新版本: " + versionInfo.getVersionName())
                 .setMessage(versionInfo.getUpdateLog())
-                .setPositiveButton("立即更新", (dialog, which) -> downloadAndInstallApk(versionInfo.getApkUrl()))
+                .setPositiveButton("立即更新", (dialog, which) -> {
+                    Log.d(TAG, "用户点击立即更新");
+                    downloadAndInstallApk(versionInfo.getApkUrl());
+                })
                 .setNegativeButton("稍后", null)
+                .setCancelable(false)
                 .show();
     }
 
     private void downloadAndInstallApk(String url) {
+        Log.d(TAG, "downloadAndInstallApk: 准备下载 APK, URL=" + url);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!getPackageManager().canRequestPackageInstalls()) {
+                Log.d(TAG, "没有安装权限，请求权限");
+                pendingApkUrl = url;
                 new AlertDialog.Builder(this)
-                        .setTitle("需要安装权限")
-                        .setMessage("为了安装更新，需要您授予安装未知应用权限")
-                        .setPositiveButton("去授权", (dialog, which) -> {
+                        .setTitle("安装权限")
+                        .setMessage("需要您开启“安装未知应用”权限，才能更新 App")
+                        .setPositiveButton("去设置", (dialog, which) -> {
                             Intent intent = new Intent(
                                     Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                     Uri.parse("package:" + getPackageName())
                             );
-                            startActivityForResult(intent, 1001);
+                            startActivityForResult(intent, REQUEST_INSTALL_PERMISSION);
                         })
-                        .setNegativeButton("取消", null)
+                        .setNegativeButton("取消", (dialog, which) -> pendingApkUrl = null)
                         .setCancelable(false)
                         .show();
                 return;
             }
         }
 
-        Toast.makeText(this, "开始下载更新包...", Toast.LENGTH_SHORT).show();
+        startDownload(url);
+    }
+
+    private void startDownload(String url) {
+        Log.d(TAG, "startDownload: 开始执行下载逻辑");
+        Toast.makeText(this, "开始后台下载...", Toast.LENGTH_SHORT).show();
 
         DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
         if (downloadManager == null) {
-            Toast.makeText(this, "系统下载服务不可用", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "startDownload: DownloadManager 服务不可用");
+            Toast.makeText(this, "下载服务不可用", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-        request.setTitle("Poco List 更新");
-        request.setDescription("正在下载新版本...");
-
         File downloadDir = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "updates");
         if (!downloadDir.exists()) {
-            downloadDir.mkdirs();
+            boolean created = downloadDir.mkdirs();
+            Log.d(TAG, "startDownload: 创建下载目录 " + (created ? "成功" : "失败"));
         }
+
         File apkFile = new File(downloadDir, "PocoList_update.apk");
-        request.setDestinationUri(Uri.fromFile(apkFile));
+        Log.d(TAG, "startDownload: 下载目标路径: " + apkFile.getAbsolutePath());
 
-        long downloadId = downloadManager.enqueue(request);
+        if (apkFile.exists()) {
+            boolean deleted = apkFile.delete();
+            Log.d(TAG, "startDownload: 删除旧文件 " + (deleted ? "成功" : "失败"));
+        }
 
-        BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
+        try {
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setTitle("Poco List 更新");
+            request.setDescription("正在下载新版本...");
+            request.setDestinationUri(Uri.fromFile(apkFile));
+            request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
+            request.setAllowedOverMetered(true);
+            request.setAllowedOverRoaming(true);
+
+            long downloadId = downloadManager.enqueue(request);
+            Log.d(TAG, "startDownload: 下载任务已入队, ID=" + downloadId);
+
+            registerDownloadReceiver(downloadId, apkFile);
+        } catch (Exception e) {
+            Log.e(TAG, "startDownload: 创建下载请求失败", e);
+            Toast.makeText(this, "创建下载任务失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private void registerDownloadReceiver(long downloadId, File apkFile) {
+        if (downloadReceiver != null) {
+            try {
+                unregisterReceiver(downloadReceiver);
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
+        downloadReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                Log.d(TAG, "onReceive: 收到广播, ID=" + id + ", 目标ID=" + downloadId);
                 if (id == downloadId) {
-                    Toast.makeText(context, "下载完成，准备安装...", Toast.LENGTH_SHORT).show();
-                    installApk(context, apkFile);
-
-                    try {
-                        unregisterReceiver(this);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    checkDownloadStatus(context, downloadId, apkFile);
                 }
             }
         };
 
-        registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadReceiver, filter, Context.RECEIVER_EXPORTED);
+            Log.d(TAG, "registerDownloadReceiver: 注册 Receiver (Android 13+)");
+        } else {
+            registerReceiver(downloadReceiver, filter);
+            Log.d(TAG, "registerDownloadReceiver: 注册 Receiver (旧版本)");
+        }
+    }
+
+    private void checkDownloadStatus(Context context, long downloadId, File apkFile) {
+        Log.d(TAG, "checkDownloadStatus: 检查下载状态");
+        DownloadManager downloadManager = (DownloadManager) context.getSystemService(DOWNLOAD_SERVICE);
+        DownloadManager.Query query = new DownloadManager.Query();
+        query.setFilterById(downloadId);
+
+        try (Cursor cursor = downloadManager.query(query)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                int reasonIndex = cursor.getColumnIndex(DownloadManager.COLUMN_REASON);
+
+                int status = cursor.getInt(statusIndex);
+                int reason = cursor.getInt(reasonIndex);
+
+                Log.d(TAG, "checkDownloadStatus: status=" + status + ", reason=" + reason);
+
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    Log.d(TAG, "checkDownloadStatus: 下载成功，准备安装");
+                    Toast.makeText(context, "下载成功，准备安装...", Toast.LENGTH_SHORT).show();
+                    installApk(context, apkFile);
+
+                    // 成功后注销
+                    try {
+                        unregisterReceiver(downloadReceiver);
+                        downloadReceiver = null;
+                        Log.d(TAG, "checkDownloadStatus: Receiver 已注销");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                } else if (status == DownloadManager.STATUS_FAILED) {
+                    Log.e(TAG, "checkDownloadStatus: 下载失败，原因码: " + reason);
+                    Toast.makeText(context, "下载失败，错误码: " + reason, Toast.LENGTH_LONG).show();
+                } else {
+                    Log.d(TAG, "checkDownloadStatus: 下载仍在进行中或暂停");
+                }
+            } else {
+                Log.e(TAG, "checkDownloadStatus: Cursor 为空或无法移动");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "checkDownloadStatus: 查询失败", e);
+        }
     }
 
     private void installApk(Context context, File apkFile) {
         if (!apkFile.exists()) {
+            Log.e(TAG, "installApk: 文件不存在: " + apkFile.getAbsolutePath());
             Toast.makeText(context, "安装包不存在", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        Intent installIntent = new Intent(Intent.ACTION_VIEW);
-        installIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            Uri apkUri = FileProvider.getUriForFile(
-                    context,
-                    getPackageName() + ".provider",
-                    apkFile
-            );
-            installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-            installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        } else {
-            installIntent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
-        }
-
         try {
+            Log.d(TAG, "installApk: 开始构建 Intent");
+            Intent installIntent = new Intent(Intent.ACTION_VIEW);
+            installIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                // ！！！这里的 authority 必须和 AndroidManifest.xml 中的 provider authorities 一致！！！
+                String authority = getPackageName() + ".provider";
+                Log.d(TAG, "installApk: FileProvider Authority = " + authority);
+
+                Uri apkUri = FileProvider.getUriForFile(context, authority, apkFile);
+                Log.d(TAG, "installApk: FileProvider URI = " + apkUri.toString());
+
+                installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            } else {
+                installIntent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
+            }
+
+            Log.d(TAG, "installApk: 启动安装 Intent");
             context.startActivity(installIntent);
         } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(context, "安装失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Log.e(TAG, "installApk: 启动安装失败", e);
+            Toast.makeText(context, "无法启动安装程序: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -291,19 +424,25 @@ public class SettingsActivity extends BaseActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == 1001) {
+        if (requestCode == REQUEST_INSTALL_PERMISSION) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 if (getPackageManager().canRequestPackageInstalls()) {
-                    Toast.makeText(this, "权限已授予，请重新点击'立即更新'", Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "onActivityResult: 权限已授予");
+                    if (pendingApkUrl != null) {
+                        startDownload(pendingApkUrl);
+                        pendingApkUrl = null;
+                    }
                 } else {
-                    Toast.makeText(this, "未授予权限，无法更新", Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "onActivityResult: 权限未授予");
+                    Toast.makeText(this, "未授予安装权限，无法更新", Toast.LENGTH_SHORT).show();
+                    pendingApkUrl = null;
                 }
             }
         }
     }
 
-
-    // Gson 解析类
+    // ... 其他无关方法保持不变 ...
+    // 版本信息类
     private static class VersionInfo {
         private int versionCode;
         private String versionName;
@@ -315,7 +454,6 @@ public class SettingsActivity extends BaseActivity {
         public String getUpdateLog() { return updateLog; }
         public String getApkUrl() { return apkUrl; }
     }
-
 
     private void showFontSizeDialog(SharedPreferences appPrefs) {
         final String[] options = {"小", "标准", "大", "特大"};
@@ -335,10 +473,7 @@ public class SettingsActivity extends BaseActivity {
                 .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
                     float selectedScale = scales[which];
                     if (currentScale != selectedScale) {
-                        SharedPreferences.Editor editor = appPrefs.edit();
-                        editor.putFloat("font_scale", selectedScale);
-                        editor.putBoolean("needs_recreate", true);
-                        editor.apply();
+                        appPrefs.edit().putFloat("font_scale", selectedScale).apply();
                         dialog.dismiss();
                         recreate();
                     } else {
@@ -373,9 +508,7 @@ public class SettingsActivity extends BaseActivity {
             deleteDir(cacheDir);
             String formattedSize = formatSize(cacheSize);
 
-            String message = "缓存已清理完毕 (" + formattedSize + ")";
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-
+            Toast.makeText(this, "缓存已清理完毕 (" + formattedSize + ")", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(this, "清理失败", Toast.LENGTH_SHORT).show();
@@ -403,7 +536,8 @@ public class SettingsActivity extends BaseActivity {
         if (size <= 0) return "0 B";
         final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
         int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
-        return String.format(java.util.Locale.getDefault(), "%.2f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
+        return String.format(java.util.Locale.getDefault(), "%.2f %s",
+                size / Math.pow(1024, digitGroups), units[digitGroups]);
     }
 
     private boolean deleteDir(File dir) {
@@ -418,7 +552,6 @@ public class SettingsActivity extends BaseActivity {
         return dir != null && dir.delete();
     }
 
-    // 开启音乐服务
     private void startMusicService() {
         startService(new Intent(this, MusicService.class));
     }
