@@ -139,7 +139,7 @@ public class SettingsActivity extends BaseActivity {
     private void checkUpdate() {
         Toast.makeText(this, "正在检查更新...", Toast.LENGTH_SHORT).show();
         // TODO: 记得替换成你自己的 version.json 文件的真实链接
-        String url = "https://raw.githubusercontent.com/YOUR_GITHUB_NAME/YOUR_REPO_NAME/main/version.json";
+        String url = "https://github.com/2932238802/Pococ/releases/download/v2.0.1/app-release.apk";
 
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url(url).build();
