@@ -20,6 +20,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -50,6 +52,8 @@ public class PocoListActivity  extends BaseActivity  {
     private ViewPager2 viewPager;
     private ViewPagerAdapter viewPagerAdapter;
     private DatabaseHelper dbHelper;
+
+    private ActivityResultLauncher<Intent> settingsLauncher;
 
     private final String[] TAB_TITLES = {"日计划", "月计划", "季计划", "年计划"};
 
@@ -387,8 +391,20 @@ public class PocoListActivity  extends BaseActivity  {
 
         settingBtn.setOnClickListener(v -> {
             Intent intent = new Intent(PocoListActivity.this, SettingsActivity.class);
-            startActivity(intent);
+            settingsLauncher.launch(intent);
         });
+
+        settingsLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    SharedPreferences appPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
+                    if (appPrefs.getBoolean("needs_recreate", false)) {
+                        appPrefs.edit().putBoolean("needs_recreate", false).apply();
+                        recreate();
+                    }
+                }
+        );
+
 
         if (btnDeleteCompleted != null) {
             btnDeleteCompleted.setOnClickListener(v -> showDeleteConfirmDialog());
@@ -411,12 +427,6 @@ public class PocoListActivity  extends BaseActivity  {
     @Override
     protected void onResume() {
         super.onResume();
-        SharedPreferences appPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
-        if (appPrefs.getBoolean("needs_recreate", false)) {
-            appPrefs.edit().putBoolean("needs_recreate", false).apply();
-            recreate();
-            return;
-        }
         checkQuoteVisibility();
     }
 

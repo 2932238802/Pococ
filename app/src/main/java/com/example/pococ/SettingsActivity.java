@@ -200,57 +200,108 @@ public class SettingsActivity extends BaseActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!getPackageManager().canRequestPackageInstalls()) {
                 new AlertDialog.Builder(this)
-                        .setTitle("安装权限")
-                        .setMessage("需要您开启“安装未知应用”权限，才能更新 App")
-                        .setPositiveButton("去设置", (dialog, which) -> {
-                            Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()));
-                            startActivity(intent);
+                        .setTitle("需要安装权限")
+                        .setMessage("为了安装更新，需要您授予安装未知应用权限")
+                        .setPositiveButton("去授权", (dialog, which) -> {
+                            Intent intent = new Intent(
+                                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    Uri.parse("package:" + getPackageName())
+                            );
+                            startActivityForResult(intent, 1001);
                         })
                         .setNegativeButton("取消", null)
+                        .setCancelable(false)
                         .show();
                 return;
             }
         }
 
-        Toast.makeText(this, "开始后台下载...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "开始下载更新包...", Toast.LENGTH_SHORT).show();
+
         DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        if (downloadManager == null) {
+            Toast.makeText(this, "系统下载服务不可用", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
         request.setTitle("Poco List 更新");
         request.setDescription("正在下载新版本...");
-        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "pocolist_new.apk");
+
+        File downloadDir = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "updates");
+        if (!downloadDir.exists()) {
+            downloadDir.mkdirs();
+        }
+        File apkFile = new File(downloadDir, "PocoList_update.apk");
+        request.setDestinationUri(Uri.fromFile(apkFile));
 
         long downloadId = downloadManager.enqueue(request);
 
-        registerReceiver(new BroadcastReceiver() {
+        BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
                 if (id == downloadId) {
-                    installApk(context, downloadId);
-                    unregisterReceiver(this);
+                    Toast.makeText(context, "下载完成，准备安装...", Toast.LENGTH_SHORT).show();
+                    installApk(context, apkFile);
+
+                    try {
+                        unregisterReceiver(this);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
-        }, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        };
+
+        registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
     }
 
-    private void installApk(Context context, long downloadId) {
-        DownloadManager downloadManager = (DownloadManager) context.getSystemService(DOWNLOAD_SERVICE);
-        Uri fileUri = downloadManager.getUriForDownloadedFile(downloadId);
-        if (fileUri != null) {
-            Intent installIntent = new Intent(Intent.ACTION_VIEW);
-            installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "pocolist_new.apk");
-                Uri contentUri = FileProvider.getUriForFile(context, getPackageName() + ".provider", file);
-                installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                installIntent.setDataAndType(contentUri, "application/vnd.android.package-archive");
-            } else {
-                installIntent.setDataAndType(fileUri, "application/vnd.android.package-archive");
-            }
+    private void installApk(Context context, File apkFile) {
+        if (!apkFile.exists()) {
+            Toast.makeText(context, "安装包不存在", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent installIntent = new Intent(Intent.ACTION_VIEW);
+        installIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Uri apkUri = FileProvider.getUriForFile(
+                    context,
+                    getPackageName() + ".provider",
+                    apkFile
+            );
+            installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } else {
+            installIntent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
+        }
+
+        try {
             context.startActivity(installIntent);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(context, "安装失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 1001) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (getPackageManager().canRequestPackageInstalls()) {
+                    Toast.makeText(this, "权限已授予，请重新点击'立即更新'", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "未授予权限，无法更新", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
 
     // Gson 解析类
     private static class VersionInfo {
