@@ -423,6 +423,8 @@ public class PocoListActivity  extends BaseActivity  {
     @Override
     protected void onPause() {
         super.onPause();
+
+        // 这里就是停止一下这个接口
         if (quoteHandler != null) {
             quoteHandler.removeCallbacks(quoteRunnable);
         }
@@ -436,7 +438,7 @@ public class PocoListActivity  extends BaseActivity  {
             if (isQuoteEnabled) {
                 tvQuote.setVisibility(android.view.View.VISIBLE);
                 if (quoteHandler != null) {
-                    quoteHandler.removeCallbacks(quoteRunnable);
+                        quoteHandler.removeCallbacks(quoteRunnable);
                     startQuoteRotation();
                 }
             } else {

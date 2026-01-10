@@ -27,7 +27,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_TASK_DUE_DATE = "due_date";
     private static final String COL_TASK_TYPE = "task_type";
     private static final String COL_TASK_USER = "user_name";
-    private static final String COL_TASK_ORDER = "order_index"; // <--- 新增
+    private static final String COL_TASK_ORDER = "order_index";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -48,7 +48,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 COL_TASK_DUE_DATE + " TEXT, " +
                 COL_TASK_TYPE + " INTEGER DEFAULT 0, " +
                 COL_TASK_USER + " TEXT, " +
-                COL_TASK_ORDER + " INTEGER DEFAULT 0)"; // <--- 修改：增加这一行
+                COL_TASK_ORDER + " INTEGER DEFAULT 0)";
         db.execSQL(createTaskTable);
     }
 

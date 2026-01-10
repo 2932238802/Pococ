@@ -294,7 +294,7 @@ public class TaskFragment extends Fragment {
         if (getContext() == null) return;
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext())
                 .setTitle("DELETE")
-                .setMessage("准备好迎接新的开始了吗？")
+                .setMessage("你要删除'" + task.getTitle() + "'任务嘛?")
                 .setPositiveButton("DELETE", (dialog, which) -> {
                     dbHelper.deleteTask(task.getId());
                     loadTasks();

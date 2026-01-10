@@ -10,8 +10,8 @@ android {
         applicationId = "com.example.pococ"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "2.0.3"
+        versionCode = 5
+        versionName = "2.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,7 +34,7 @@ android {
         val variant = this
         outputs.map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
             .forEach { output ->
-                val outputFileName = "PocoList_v_2_0_3.apk"
+                val outputFileName = "PocoList_v_2_0_4.apk"
                 output.outputFileName = outputFileName
             }
     }

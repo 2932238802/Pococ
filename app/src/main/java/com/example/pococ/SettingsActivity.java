@@ -314,13 +314,45 @@ public class SettingsActivity extends BaseActivity {
     private void clearAppCache() {
         try {
             File cacheDir = getCacheDir();
-            if (cacheDir != null && cacheDir.isDirectory()) {
-                deleteDir(cacheDir);
+            if (cacheDir == null || !cacheDir.isDirectory()) {
+                Toast.makeText(this, "没有找到缓存目录", Toast.LENGTH_SHORT).show();
+                return;
             }
-            Toast.makeText(this, "缓存已清理完毕 (0KB)", Toast.LENGTH_SHORT).show();
+            long cacheSize = getDirSize(cacheDir);
+            deleteDir(cacheDir);
+            String formattedSize = formatSize(cacheSize);
+
+            String message = "缓存已清理完毕 (" + formattedSize + ")";
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+
         } catch (Exception e) {
+            e.printStackTrace();
             Toast.makeText(this, "清理失败", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private long getDirSize(File dir) {
+        long size = 0;
+        if (dir != null && dir.isDirectory()) {
+            File[] files = dir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile()) {
+                        size += file.length();
+                    } else if (file.isDirectory()) {
+                        size += getDirSize(file);
+                    }
+                }
+            }
+        }
+        return size;
+    }
+
+    private String formatSize(long size) {
+        if (size <= 0) return "0 B";
+        final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
+        int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+        return String.format(java.util.Locale.getDefault(), "%.2f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
     }
 
     private boolean deleteDir(File dir) {
@@ -335,6 +367,7 @@ public class SettingsActivity extends BaseActivity {
         return dir != null && dir.delete();
     }
 
+    // 开启音乐服务
     private void startMusicService() {
         startService(new Intent(this, MusicService.class));
     }
