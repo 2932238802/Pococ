@@ -147,8 +147,8 @@ public class SettingsActivity extends BaseActivity {
 
     private void checkUpdate() {
         Toast.makeText(this, "正在检查更新...", Toast.LENGTH_SHORT).show();
-        String url = "https://raw.githubusercontent.com/2932238802/Pococ/refs/heads/main/version.json";
-
+        String url = " https://gitee.com/lsjwillwin/Pococ/raw/main/version.json";
+//        https://gitee.com/lsjwillwin/Pococ/raw/main/version.json
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url(url).build();
 
