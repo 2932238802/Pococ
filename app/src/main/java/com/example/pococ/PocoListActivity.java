@@ -440,6 +440,7 @@ public class PocoListActivity  extends BaseActivity  {
         }
     }
 
+
     private void checkQuoteVisibility() {
         SharedPreferences appPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
         boolean isQuoteEnabled = appPrefs.getBoolean("quote_enabled", true);
